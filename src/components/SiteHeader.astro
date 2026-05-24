@@ -9,6 +9,7 @@ const { current } = Astro.props;
 const homeHref = withBase();
 const writeHref = withBase("write/");
 const showWritingNav = import.meta.env.DEV;
+const githubHref = "https://github.com/Minsecrus/DrifterPoetry";
 ---
 
 <header class="site-header">
@@ -26,12 +27,13 @@ const showWritingNav = import.meta.env.DEV;
 		<button class="segment" type="button" data-theme-choice="dark">Dark</button>
 		<button class="segment" type="button" data-theme-choice="system">System</button>
 	</div>
+	<a class="github-link" href={githubHref} target="_blank" rel="noreferrer">GitHub</a>
 </header>
 
 <style>
 	.site-header {
 		display: grid;
-		grid-template-columns: 1fr auto auto;
+		grid-template-columns: 1fr auto auto auto;
 		align-items: center;
 		gap: 20px;
 		padding-bottom: var(--site-header-padding, 34px);
@@ -82,6 +84,27 @@ const showWritingNav = import.meta.env.DEV;
 	.segment.active,
 	.segment.active:visited,
 	.segment[aria-pressed="true"] {
+		background: var(--accent-soft);
+		color: var(--text);
+	}
+
+	.github-link,
+	.github-link:visited {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		height: 32px;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		padding: 0 14px;
+		background: var(--surface);
+		color: var(--muted);
+		text-decoration: none;
+		font-size: 0.78rem;
+		line-height: 1;
+	}
+
+	.github-link:hover {
 		background: var(--accent-soft);
 		color: var(--text);
 	}
