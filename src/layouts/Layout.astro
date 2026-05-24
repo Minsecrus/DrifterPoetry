@@ -1,6 +1,6 @@
 ---
 interface Props {
-	title?: string;
+  title?: string;
 }
 
 const { title = "DrifterPoetry" } = Astro.props;
@@ -8,113 +8,129 @@ const { title = "DrifterPoetry" } = Astro.props;
 
 <!doctype html>
 <html lang="zh-CN">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="generator" content={Astro.generator} />
-		<title>{title}</title>
-		<script is:inline>
-			const preference = localStorage.getItem("drifterpoetry-theme") || "system";
-			const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-			document.documentElement.dataset.theme = preference === "system" ? (systemDark ? "dark" : "light") : preference;
-			document.documentElement.dataset.themePreference = preference;
-		</script>
-	</head>
-	<body>
-		<slot />
-		<script is:inline>
-			const buttons = document.querySelectorAll("[data-theme-choice]");
-			const query = window.matchMedia("(prefers-color-scheme: dark)");
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    <script is:inline>
+      const preference =
+        localStorage.getItem("drifterpoetry-theme") || "system";
+      const systemDark = window.matchMedia(
+        "(prefers-color-scheme: dark)",
+      ).matches;
+      document.documentElement.dataset.theme =
+        preference === "system" ? (systemDark ? "dark" : "light") : preference;
+      document.documentElement.dataset.themePreference = preference;
+    </script>
+  </head>
+  <body>
+    <slot />
+    <script is:inline>
+      const buttons = document.querySelectorAll("[data-theme-choice]");
+      const query = window.matchMedia("(prefers-color-scheme: dark)");
 
-			function applyTheme(preference) {
-				const theme = preference === "system" ? (query.matches ? "dark" : "light") : preference;
-				document.documentElement.dataset.theme = theme;
-				document.documentElement.dataset.themePreference = preference;
-				localStorage.setItem("drifterpoetry-theme", preference);
-				buttons.forEach((button) => {
-					button.setAttribute("aria-pressed", String(button.dataset.themeChoice === preference));
-				});
-			}
+      function applyTheme(preference) {
+        const theme =
+          preference === "system"
+            ? query.matches
+              ? "dark"
+              : "light"
+            : preference;
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.themePreference = preference;
+        localStorage.setItem("drifterpoetry-theme", preference);
+        buttons.forEach((button) => {
+          button.setAttribute(
+            "aria-pressed",
+            String(button.dataset.themeChoice === preference),
+          );
+        });
+      }
 
-			buttons.forEach((button) => {
-				button.addEventListener("click", () => applyTheme(button.dataset.themeChoice));
-			});
-			query.addEventListener("change", () => {
-				if ((localStorage.getItem("drifterpoetry-theme") || "system") === "system") {
-					applyTheme("system");
-				}
-			});
-			applyTheme(localStorage.getItem("drifterpoetry-theme") || "system");
-		</script>
-	</body>
+      buttons.forEach((button) => {
+        button.addEventListener("click", () =>
+          applyTheme(button.dataset.themeChoice),
+        );
+      });
+      query.addEventListener("change", () => {
+        if (
+          (localStorage.getItem("drifterpoetry-theme") || "system") === "system"
+        ) {
+          applyTheme("system");
+        }
+      });
+      applyTheme(localStorage.getItem("drifterpoetry-theme") || "system");
+    </script>
+  </body>
 </html>
 
 <style>
-	:root {
-		color-scheme: light;
-		--bg: #fcfbfa;
-		--surface: #fffcf7;
-		--text: #211e1a;
-		--muted: #7d756b;
-		--faint: #b8aea1;
-		--line: #ded5ca;
-		--accent: #6f4e37;
-		--accent-soft: #eee5dc;
-		font-family:
-			"Libre Baskerville", "Noto Serif SC", "Songti SC", Georgia, serif;
-	}
+  :root {
+    color-scheme: light;
+    --bg: #fcfbfa;
+    --surface: #fcfbfa;
+    --text: #211e1a;
+    --muted: #7d756b;
+    --faint: #b8aea1;
+    --line: #ded5ca;
+    --accent: #6f4e37;
+    --accent-soft: #eee5dc;
+    font-family:
+      "Libre Baskerville", "Noto Serif SC", "Songti SC", Georgia, serif;
+  }
 
-	:root[data-theme="dark"] {
-		color-scheme: dark;
-		--bg: #181713;
-		--surface: #211f1a;
-		--text: #efe8dc;
-		--muted: #aaa094;
-		--faint: #6f685f;
-		--line: #39342d;
-		--accent: #d8b98c;
-		--accent-soft: #302a21;
-	}
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #181713;
+    --surface: #211f1a;
+    --text: #efe8dc;
+    --muted: #aaa094;
+    --faint: #6f685f;
+    --line: #39342d;
+    --accent: #d8b98c;
+    --accent-soft: #302a21;
+  }
 
-	html,
-	body {
-		margin: 0;
-		width: 100%;
-		min-height: 100%;
-		background: var(--bg);
-		color: var(--text);
-	}
+  html,
+  body {
+    margin: 0;
+    width: 100%;
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text);
+  }
 
-	* {
-		box-sizing: border-box;
-	}
+  * {
+    box-sizing: border-box;
+  }
 
-	body {
-		font-size: 16px;
-		line-height: 1.8;
-	}
+  body {
+    font-size: 16px;
+    line-height: 1.8;
+  }
 
-	a {
-		color: inherit;
-		text-decoration-thickness: 1px;
-		text-underline-offset: 0.2em;
-	}
+  a {
+    color: inherit;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
 
-	a:visited {
-		color: inherit;
-	}
+  a:visited {
+    color: inherit;
+  }
 
-	a:focus-visible,
-	button:focus-visible {
-		outline: 2px solid var(--accent);
-		outline-offset: 3px;
-	}
+  a:focus-visible,
+  button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
 
-	button,
-	input,
-	textarea {
-		font: inherit;
-	}
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
 </style>
