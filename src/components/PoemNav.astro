@@ -1,0 +1,91 @@
+---
+import { getPoemDisplayTitle, getPoemHref, type Poem } from "../lib/poems";
+
+interface Props {
+	activeUuid?: string;
+	items?: Poem[];
+	mode?: "links" | "buttons";
+}
+
+const { activeUuid = "", items = [], mode = "links" } = Astro.props;
+---
+
+<ol class="poem-nav" data-poem-list={mode === "buttons" ? true : undefined}>
+	{
+		items.map((poem) => (
+			<li data-uuid={poem.uuid}>
+				{
+					mode === "links" ? (
+						<a
+							class:list={{ active: poem.uuid === activeUuid }}
+							href={getPoemHref(poem.uuid)}
+						>
+							<span>{String(poem.number).padStart(2, "0")}</span>
+							{getPoemDisplayTitle(poem)}
+						</a>
+					) : (
+						<button class:list={{ active: poem.uuid === activeUuid }} type="button">
+							<span>{String(poem.number).padStart(2, "0")}</span>
+							{getPoemDisplayTitle(poem)}
+						</button>
+					)
+				}
+			</li>
+		))
+	}
+</ol>
+
+<style is:global>
+	.poem-nav {
+		display: grid;
+		gap: 8px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.poem-nav li {
+		border-bottom: 1px solid var(--line);
+	}
+
+	.poem-nav a,
+	.poem-nav button {
+		display: grid;
+		grid-template-columns: 34px 1fr;
+		gap: 10px;
+		align-items: baseline;
+		width: 100%;
+		padding: 8px 0;
+		border: 0;
+		background: transparent;
+		color: var(--muted);
+		text-align: left;
+		text-decoration: none;
+		cursor: pointer;
+		font: inherit;
+		font-size: 0.92rem;
+		line-height: 1.45;
+	}
+
+	.poem-nav a:visited {
+		color: var(--muted);
+	}
+
+	.poem-nav span {
+		color: var(--faint);
+		font-size: 0.9em;
+	}
+
+	.poem-nav a:hover,
+	.poem-nav button:hover,
+	.poem-nav .active,
+	.poem-nav .active:visited {
+		color: var(--text);
+	}
+
+	.poem-nav a:hover span,
+	.poem-nav button:hover span,
+	.poem-nav .active span {
+		color: var(--accent);
+	}
+</style>

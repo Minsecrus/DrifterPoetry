@@ -4,6 +4,9 @@ dist/
 # generated types
 .astro/
 
+# local caches
+.deno/
+
 # dependencies
 node_modules/
 
@@ -12,6 +15,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# local-only files
+*.local
 
 # environment variables
 .env

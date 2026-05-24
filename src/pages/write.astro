@@ -1,0 +1,550 @@
+---
+import SiteHeader from "../components/SiteHeader.astro";
+import PoemNav from "../components/PoemNav.astro";
+import Layout from "../layouts/Layout.astro";
+import { withBase } from "../lib/poems";
+
+if (!import.meta.env.DEV) {
+	return Astro.redirect(withBase());
+}
+---
+
+<Layout title="Write - DrifterPoetry">
+	<main class="write-shell">
+		<SiteHeader current="write" />
+
+		<section class="write-workspace" aria-label="Writing workspace">
+			<aside class="write-list">
+				<div class="toolbar">
+					<h1>Write</h1>
+					<button class="icon-button" type="button" data-action="new" aria-label="New poem">+</button>
+				</div>
+				<PoemNav mode="buttons" />
+			</aside>
+
+			<form class="editor" data-editor>
+				<div class="editor-topline">
+					<p class="editor-number" data-number>No poem selected</p>
+					<p class="status" data-status></p>
+				</div>
+
+				<label class="field">
+					<span>Title</span>
+					<input name="title" data-title autocomplete="off" />
+				</label>
+
+				<label class="field body-field">
+					<span>Body</span>
+					<textarea name="body" data-body spellcheck="false"></textarea>
+				</label>
+
+				<div class="editor-actions">
+					<button class="primary-button" type="submit">Save</button>
+					<button class="plain-button danger" type="button" data-action="delete">Delete</button>
+				</div>
+
+				<section class="note-preview" aria-labelledby="note-preview-title">
+					<div class="preview-toolbar">
+						<h2 id="note-preview-title">Notes</h2>
+						<button class="plain-button" type="button" data-action="toggle-notes">Expand all</button>
+					</div>
+					<div class="preview-body" data-preview></div>
+				</section>
+			</form>
+		</section>
+	</main>
+
+	<script>
+		const apiBase = "http://127.0.0.1:8787";
+		const state = {
+			poems: [],
+			selectedUuid: "",
+			expandedNotes: new Set(),
+			allNotesExpanded: false,
+		};
+
+		const list = document.querySelector("[data-poem-list]");
+		const editor = document.querySelector("[data-editor]");
+		const titleInput = document.querySelector("[data-title]");
+		const bodyInput = document.querySelector("[data-body]");
+		const numberLabel = document.querySelector("[data-number]");
+		const status = document.querySelector("[data-status]");
+		const preview = document.querySelector("[data-preview]");
+		const newButton = document.querySelector('[data-action="new"]');
+		const deleteButton = document.querySelector('[data-action="delete"]');
+		const toggleNotesButton = document.querySelector('[data-action="toggle-notes"]');
+
+		init();
+
+		async function init() {
+			bindEvents();
+			await loadPoems();
+		}
+
+		function bindEvents() {
+			newButton.addEventListener("click", createPoem);
+			deleteButton.addEventListener("click", deleteSelectedPoem);
+			toggleNotesButton.addEventListener("click", toggleAllNotes);
+			bodyInput.addEventListener("input", renderPreview);
+			titleInput.addEventListener("input", markDirty);
+
+			editor.addEventListener("submit", async (event) => {
+				event.preventDefault();
+				await saveSelectedPoem();
+			});
+		}
+
+		async function loadPoems(preferredUuid = state.selectedUuid) {
+			state.poems = await request("/api/poems");
+			state.selectedUuid = preferredUuid || state.poems[0]?.uuid || "";
+			if (!state.poems.some((poem) => poem.uuid === state.selectedUuid)) {
+				state.selectedUuid = state.poems[0]?.uuid || "";
+			}
+			renderList();
+			renderEditor();
+		}
+
+		async function createPoem() {
+			const poem = await request("/api/poems", {
+				method: "POST",
+				body: JSON.stringify({ title: "", body: "" }),
+			});
+			state.selectedUuid = poem.uuid;
+			await loadPoems(poem.uuid);
+			setStatus("Created");
+		}
+
+		async function saveSelectedPoem() {
+			const poem = selectedPoem();
+			if (!poem) {
+				return;
+			}
+
+			await request(`/api/poems/${poem.uuid}`, {
+				method: "PUT",
+				body: JSON.stringify({
+					title: titleInput.value,
+					body: bodyInput.value,
+				}),
+			});
+			await loadPoems(poem.uuid);
+			setStatus("Saved");
+		}
+
+		async function deleteSelectedPoem() {
+			const poem = selectedPoem();
+			if (!poem) {
+				return;
+			}
+
+			const label = poem.title.trim() || String(poem.number);
+			if (!confirm(`Delete "${label}"?`)) {
+				return;
+			}
+
+			await request(`/api/poems/${poem.uuid}`, { method: "DELETE" });
+			state.selectedUuid = "";
+			await loadPoems();
+			setStatus("Deleted");
+		}
+
+		async function reorderPoems(fromUuid, toUuid) {
+			if (fromUuid === toUuid) {
+				return;
+			}
+
+			const uuids = state.poems.map((poem) => poem.uuid);
+			const fromIndex = uuids.indexOf(fromUuid);
+			const toIndex = uuids.indexOf(toUuid);
+			if (fromIndex === -1 || toIndex === -1) {
+				return;
+			}
+
+			const [moved] = uuids.splice(fromIndex, 1);
+			uuids.splice(toIndex, 0, moved);
+			await request("/api/reorder", {
+				method: "POST",
+				body: JSON.stringify({ uuids }),
+			});
+			await loadPoems(state.selectedUuid);
+			setStatus("Order saved");
+		}
+
+		function renderList() {
+			list.replaceChildren();
+
+			for (const poem of state.poems) {
+				const item = document.createElement("li");
+				item.draggable = true;
+				item.dataset.uuid = poem.uuid;
+
+				const button = document.createElement("button");
+				button.type = "button";
+				button.className = poem.uuid === state.selectedUuid ? "active" : "";
+				button.innerHTML = `<span>${String(poem.number).padStart(2, "0")}</span>${escapeHtml(
+					poem.title.trim() || String(poem.number),
+				)}`;
+				button.addEventListener("click", () => {
+					state.selectedUuid = poem.uuid;
+					state.expandedNotes.clear();
+					renderList();
+					renderEditor();
+				});
+
+				item.addEventListener("dragstart", (event) => {
+					event.dataTransfer?.setData("text/plain", poem.uuid);
+					event.dataTransfer?.setDragImage(item, 16, 16);
+				});
+				item.addEventListener("dragover", (event) => event.preventDefault());
+				item.addEventListener("drop", async (event) => {
+					event.preventDefault();
+					const fromUuid = event.dataTransfer?.getData("text/plain");
+					if (fromUuid) {
+						await reorderPoems(fromUuid, poem.uuid);
+					}
+				});
+
+				item.append(button);
+				list.append(item);
+			}
+		}
+
+		function renderEditor() {
+			const poem = selectedPoem();
+			editor.toggleAttribute("data-empty", !poem);
+			titleInput.disabled = !poem;
+			bodyInput.disabled = !poem;
+			deleteButton.disabled = !poem;
+
+			if (!poem) {
+				numberLabel.textContent = "No poem selected";
+				titleInput.value = "";
+				bodyInput.value = "";
+				preview.replaceChildren();
+				return;
+			}
+
+			numberLabel.textContent = String(poem.number);
+			titleInput.value = poem.title;
+			bodyInput.value = poem.body;
+			renderPreview();
+		}
+
+		function renderPreview() {
+			const parsed = parseNotes(bodyInput.value);
+			preview.replaceChildren();
+
+			if (parsed.notes.length === 0) {
+				const empty = document.createElement("p");
+				empty.className = "empty-preview";
+				empty.textContent = "No inline notes.";
+				preview.append(empty);
+				toggleNotesButton.disabled = true;
+				return;
+			}
+
+			toggleNotesButton.disabled = false;
+			toggleNotesButton.textContent = state.allNotesExpanded ? "Collapse all" : "Expand all";
+
+			for (const note of parsed.notes) {
+				const details = document.createElement("details");
+				details.open = state.allNotesExpanded || state.expandedNotes.has(note.id);
+				details.addEventListener("toggle", () => {
+					if (details.open) {
+						state.expandedNotes.add(note.id);
+					} else {
+						state.expandedNotes.delete(note.id);
+					}
+				});
+
+				const summary = document.createElement("summary");
+				summary.textContent = `[[${note.id}]]`;
+				summary.addEventListener("contextmenu", (event) => {
+					event.preventDefault();
+					details.open = !details.open;
+				});
+
+				const text = document.createElement("p");
+				text.textContent = note.text;
+
+				details.append(summary, text);
+				preview.append(details);
+			}
+		}
+
+		function toggleAllNotes() {
+			state.allNotesExpanded = !state.allNotesExpanded;
+			state.expandedNotes.clear();
+			renderPreview();
+		}
+
+		function parseNotes(body) {
+			const notes = [];
+			let cursor = 0;
+
+			while (cursor < body.length) {
+				const start = body.indexOf("[[", cursor);
+				if (start === -1) {
+					break;
+				}
+
+				const end = body.indexOf("]]", start + 2);
+				if (end === -1) {
+					notes.push({ id: notes.length + 1, text: "Unclosed note marker." });
+					break;
+				}
+
+				notes.push({
+					id: notes.length + 1,
+					text: body.slice(start + 2, end),
+				});
+				cursor = end + 2;
+			}
+
+			return { notes };
+		}
+
+		function selectedPoem() {
+			return state.poems.find((poem) => poem.uuid === state.selectedUuid);
+		}
+
+		function markDirty() {
+			setStatus("Unsaved");
+		}
+
+		function setStatus(message) {
+			status.textContent = message;
+			if (message && message !== "Unsaved") {
+				window.setTimeout(() => {
+					if (status.textContent === message) {
+						status.textContent = "";
+					}
+				}, 1600);
+			}
+		}
+
+		async function request(path, options = {}) {
+			const response = await fetch(`${apiBase}${path}`, {
+				headers: { "Content-Type": "application/json" },
+				...options,
+			});
+			const data = await response.json();
+			if (!response.ok) {
+				throw new Error(data.error || "Writer API request failed.");
+			}
+			return data;
+		}
+
+		function escapeHtml(value) {
+			return value
+				.replaceAll("&", "&amp;")
+				.replaceAll("<", "&lt;")
+				.replaceAll(">", "&gt;")
+				.replaceAll('"', "&quot;");
+		}
+	</script>
+</Layout>
+
+<style>
+	.write-shell {
+		width: min(1180px, calc(100% - 40px));
+		margin: 0 auto;
+		padding: 36px 0 72px;
+	}
+
+	.write-workspace {
+		display: grid;
+		grid-template-columns: 300px minmax(0, 1fr);
+		gap: 42px;
+		padding-top: 40px;
+	}
+
+	.write-list {
+		position: sticky;
+		top: 24px;
+		align-self: start;
+	}
+
+	.toolbar,
+	.editor-topline,
+	.editor-actions,
+	.preview-toolbar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
+	}
+
+	h1,
+	h2,
+	p {
+		margin: 0;
+	}
+
+	h1 {
+		font-size: 2rem;
+		font-weight: 400;
+		line-height: 1.1;
+	}
+
+	h2 {
+		color: var(--muted);
+		font-size: 0.92rem;
+		font-weight: 400;
+	}
+
+	:global(.write-shell .poem-nav) {
+		margin-top: 22px;
+	}
+
+	.editor {
+		display: grid;
+		gap: 22px;
+		min-width: 0;
+	}
+
+	.editor-topline {
+		min-height: 34px;
+		border-bottom: 1px solid var(--line);
+		color: var(--muted);
+		font-size: 0.9rem;
+	}
+
+	.status {
+		color: var(--accent);
+	}
+
+	.field {
+		display: grid;
+		gap: 8px;
+	}
+
+	.field span {
+		color: var(--muted);
+		font-size: 0.86rem;
+	}
+
+	input,
+	textarea {
+		width: 100%;
+		border: 1px solid var(--line);
+		border-radius: 6px;
+		background: var(--surface);
+		color: var(--text);
+	}
+
+	input {
+		padding: 10px 12px;
+		font-size: 1.2rem;
+	}
+
+	textarea {
+		min-height: 390px;
+		resize: vertical;
+		padding: 16px;
+		font-size: 1.08rem;
+		line-height: 1.9;
+	}
+
+	input:disabled,
+	textarea:disabled,
+	button:disabled {
+		cursor: not-allowed;
+		opacity: 0.5;
+	}
+
+	.primary-button,
+	.plain-button {
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		padding: 6px 14px;
+		background: var(--surface);
+		color: var(--text);
+		cursor: pointer;
+		font-size: 0.86rem;
+	}
+
+	.primary-button {
+		border-color: var(--accent);
+		background: var(--accent);
+		color: var(--surface);
+	}
+
+	.plain-button:hover {
+		background: var(--accent-soft);
+	}
+
+	.danger {
+		color: #9a3d33;
+	}
+
+	.icon-button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 34px;
+		height: 34px;
+		border: 0;
+		background: transparent;
+		color: var(--accent);
+		cursor: pointer;
+		font-size: 1.55rem;
+		line-height: 1;
+	}
+
+	.icon-button:hover {
+		color: var(--text);
+	}
+
+	.note-preview {
+		display: grid;
+		gap: 14px;
+		margin-top: 12px;
+		padding-top: 24px;
+		border-top: 1px solid var(--line);
+	}
+
+	:global(.write-shell .preview-body) {
+		display: grid;
+		gap: 10px;
+	}
+
+	:global(.write-shell .preview-body details) {
+		border: 1px solid var(--line);
+		border-radius: 6px;
+		background: var(--surface);
+	}
+
+	:global(.write-shell .preview-body summary) {
+		padding: 8px 12px;
+		color: var(--accent);
+		cursor: pointer;
+		font-size: 0.9rem;
+	}
+
+	:global(.write-shell .preview-body details p) {
+		padding: 0 12px 12px;
+		white-space: pre-wrap;
+		color: var(--muted);
+	}
+
+	:global(.write-shell .empty-preview) {
+		color: var(--muted);
+		font-size: 0.92rem;
+	}
+
+	@media (max-width: 860px) {
+		.write-shell {
+			width: min(100% - 28px, 1180px);
+			padding-top: 22px;
+		}
+
+		.write-workspace {
+			grid-template-columns: 1fr;
+		}
+
+		.write-list {
+			position: static;
+		}
+	}
+</style>

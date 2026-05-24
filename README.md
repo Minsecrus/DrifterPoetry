@@ -1,46 +1,56 @@
-# Astro Starter Kit: Basics
+# DrifterPoetry
 
-```sh
-pnpm create astro@latest -- --template basics
-```
+DrifterPoetry is a static poetry site framework for a personal collection. The
+first version keeps all content in JSON files and renders a pure static Astro
+site that can be deployed to GitHub Pages.
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## Modes
 
-## 🚀 Project Structure
+- Display mode: Astro builds static pages from `content/poems`.
+- Writing mode: a local Deno API can create, edit, delete, reorder, and renumber
+  poems by writing JSON files under `content/poems`.
 
-Inside of your Astro project, you'll see the following folders and files:
+## Project Structure
 
 ```text
-/
-├── public/
-│   └── favicon.svg
-├── src
-│   ├── assets
-│   │   └── astro.svg
-│   ├── components
-│   │   └── Welcome.astro
-│   ├── layouts
-│   │   └── Layout.astro
-│   └── pages
-│       └── index.astro
-└── package.json
+content/
+  poems/
+    index.json
+    {uuid}.json
+server/
+  writer.ts
+scripts/
+  validate.ts
+src/
+  lib/
+    notes.ts
+    poems.ts
+  pages/
+    index.astro
+    poems/
+      [uuid].astro
 ```
 
-To learn more about the folder structure of an Astro project, refer to [our guide on project structure](https://docs.astro.build/en/basics/project-structure/).
+`content/poems/index.json` is the source of the linear poem order. Individual
+poem files keep stable `uuid` values for links and mutable `number` values for
+display order.
 
-## 🧞 Commands
+## Commands
 
-All commands are run from the root of the project, from a terminal:
+```powershell
+pnpm dev
+pnpm build
+pnpm preview
+```
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `pnpm install`             | Installs dependencies                            |
-| `pnpm dev`             | Starts local dev server at `localhost:4321`      |
-| `pnpm build`           | Build your production site to `./dist/`          |
-| `pnpm preview`         | Preview your build locally, before deploying     |
-| `pnpm astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `pnpm astro -- --help` | Get help using the Astro CLI                     |
+When Deno is installed:
 
-## 👀 Want to learn more?
+```powershell
+deno task validate
+deno task build
+deno task dev
+```
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+`deno task dev` starts the local writer API and the Astro dev server together.
+The writer API listens only on `127.0.0.1:8787` and is not included in the
+static build output.

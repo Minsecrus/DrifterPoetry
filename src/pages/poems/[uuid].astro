@@ -1,0 +1,231 @@
+---
+import SiteHeader from "../../components/SiteHeader.astro";
+import PoemNav from "../../components/PoemNav.astro";
+import Layout from "../../layouts/Layout.astro";
+import { getPoemDisplayTitle, loadPoem, loadPoemIndex, loadPoems } from "../../lib/poems";
+import { parseNotesDsl } from "../../lib/notes";
+
+export async function getStaticPaths() {
+	const index = await loadPoemIndex();
+	return index.map((entry) => ({
+		params: { uuid: entry.uuid },
+	}));
+}
+
+const { uuid } = Astro.params;
+if (!uuid) {
+	throw new Error("Poem UUID is required.");
+}
+
+const [poem, poems] = await Promise.all([loadPoem(uuid), loadPoems()]);
+const parsed = parseNotesDsl(poem.body);
+const title = getPoemDisplayTitle(poem);
+const bodyHtml = parsed.segments
+	.map((segment) => {
+		if (segment.type === "text") {
+			return escapeHtml(segment.text);
+		}
+
+		return `<a class="note-ref" id="ref-${segment.id}" href="#note-${segment.id}" aria-label="Jump to note ${segment.id}">[${segment.id}]</a>`;
+	})
+	.join("");
+
+function escapeHtml(value: string): string {
+	return value
+		.replaceAll("&", "&amp;")
+		.replaceAll("<", "&lt;")
+		.replaceAll(">", "&gt;")
+		.replaceAll('"', "&quot;");
+}
+---
+
+<Layout title={`${title} - DrifterPoetry`}>
+	<div class="page-shell">
+		<SiteHeader current="poem" />
+
+		<div class="poem-layout">
+			<article class="poem">
+				<header class:list={["poem-title", poem.title.trim() ? "has-title" : ""]}>
+					{
+						poem.title.trim() ? (
+							<>
+								<span class="ghost-number" aria-hidden="true">
+									{String(poem.number).padStart(2, "0")}
+								</span>
+								<h1>{poem.title}</h1>
+							</>
+						) : (
+							<h1>{poem.number}</h1>
+						)
+					}
+				</header>
+
+				<div class="body" set:html={bodyHtml} />
+
+				{
+					parsed.notes.length > 0 && (
+						<section class="notes" aria-labelledby="notes-title">
+							<h2 id="notes-title">Notes</h2>
+							<ol>
+								{parsed.notes.map((note) => (
+									<li id={`note-${note.id}`}>
+										<a class="backref" href={`#ref-${note.id}`} aria-label={`Back to note marker ${note.id}`}>
+											{note.id}
+										</a>
+										<p>{note.text}</p>
+									</li>
+								))}
+							</ol>
+						</section>
+					)
+				}
+			</article>
+
+			<aside class="sidebar" aria-label="Poem index">
+				<PoemNav activeUuid={poem.uuid} items={poems} />
+			</aside>
+		</div>
+	</div>
+</Layout>
+
+<style>
+	.page-shell {
+		width: min(1120px, calc(100% - 40px));
+		margin: 0 auto;
+		padding: 36px 0 80px;
+	}
+
+	.poem-layout {
+		display: grid;
+		grid-template-columns: minmax(0, 720px) 240px;
+		gap: 72px;
+		align-items: start;
+		padding-top: 64px;
+	}
+
+	.poem-title {
+		position: relative;
+		min-height: 84px;
+		margin-bottom: 58px;
+	}
+
+	.poem-title h1 {
+		position: relative;
+		z-index: 1;
+		margin: 0;
+		font-size: clamp(2.2rem, 6vw, 4.6rem);
+		font-weight: 400;
+		line-height: 1.08;
+	}
+
+	.ghost-number {
+		position: absolute;
+		top: -0.32em;
+		left: -0.08em;
+		color: var(--faint);
+		font-size: clamp(4rem, 14vw, 9rem);
+		line-height: 1;
+		opacity: 0.24;
+		pointer-events: none;
+	}
+
+	.body {
+		white-space: pre-wrap;
+		font-size: clamp(1.12rem, 2vw, 1.38rem);
+		line-height: 2.15;
+	}
+
+	:global(.note-ref) {
+		display: inline-block;
+		margin: 0 0.12em;
+		color: var(--accent);
+		font-size: 0.72em;
+		text-decoration: none;
+		vertical-align: super;
+	}
+
+	:global(.note-ref:visited),
+	:global(.note-ref:hover) {
+		color: var(--accent);
+	}
+
+	.notes {
+		margin-top: 78px;
+		padding-top: 28px;
+		border-top: 1px solid var(--line);
+	}
+
+	.notes h2 {
+		margin: 0 0 22px;
+		color: var(--muted);
+		font-size: 0.92rem;
+		font-weight: 400;
+	}
+
+	.notes ol {
+		display: grid;
+		gap: 18px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.notes li {
+		display: grid;
+		grid-template-columns: 36px 1fr;
+		gap: 18px;
+		align-items: start;
+	}
+
+	.notes p {
+		margin: 0;
+		white-space: pre-wrap;
+		color: var(--muted);
+	}
+
+	.backref {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 30px;
+		height: 30px;
+		border: 1px solid var(--line);
+		border-radius: 50%;
+		color: var(--accent);
+		text-decoration: none;
+		font-size: 0.84rem;
+	}
+
+	.backref:visited,
+	.backref:hover {
+		color: var(--accent);
+	}
+
+	.sidebar {
+		position: sticky;
+		top: 28px;
+		padding-left: 24px;
+		border-left: 1px solid var(--line);
+	}
+
+	@media (max-width: 860px) {
+		.page-shell {
+			width: min(100% - 28px, 1120px);
+			padding-top: 22px;
+		}
+
+		.poem-layout {
+			grid-template-columns: 1fr;
+			gap: 48px;
+			padding-top: 48px;
+		}
+
+		.sidebar {
+			position: static;
+			order: -1;
+			padding: 0 0 24px;
+			border-left: 0;
+			border-bottom: 1px solid var(--line);
+		}
+	}
+</style>

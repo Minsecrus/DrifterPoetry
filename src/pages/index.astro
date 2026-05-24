@@ -1,11 +1,104 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+import SiteHeader from "../components/SiteHeader.astro";
+import Layout from "../layouts/Layout.astro";
+import { getPoemDisplayTitle, getPoemHref, loadPoems } from "../lib/poems";
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const poems = await loadPoems();
 ---
 
-<Layout>
-	<Welcome />
+<Layout title="DrifterPoetry">
+	<main class="home-shell">
+		<SiteHeader current="home" />
+
+		<section class="intro" aria-labelledby="site-title">
+			<h1 id="site-title">DrifterPoetry</h1>
+		</section>
+
+		<ol class="poem-list" aria-label="Poem index">
+			{
+				poems.map((poem) => (
+					<li>
+						<a href={getPoemHref(poem.uuid)}>
+							<span class="number">{String(poem.number).padStart(2, "0")}</span>
+							<span class="title">{getPoemDisplayTitle(poem)}</span>
+						</a>
+					</li>
+				))
+			}
+		</ol>
+	</main>
 </Layout>
+
+<style>
+	.home-shell {
+		--site-header-padding: 42px;
+		width: min(900px, calc(100% - 40px));
+		margin: 0 auto;
+		padding: 36px 0 72px;
+	}
+
+	.intro {
+		padding: 72px 0 52px;
+	}
+
+	h1 {
+		margin: 0;
+		font-size: clamp(2.7rem, 9vw, 6rem);
+		font-weight: 400;
+		line-height: 1;
+	}
+
+	.poem-list {
+		display: grid;
+		gap: 0;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		border-top: 1px solid var(--line);
+	}
+
+	.poem-list a {
+		display: grid;
+		grid-template-columns: 64px 1fr;
+		gap: 20px;
+		align-items: baseline;
+		padding: 22px 0;
+		border-bottom: 1px solid var(--line);
+		color: var(--text);
+		text-decoration: none;
+	}
+
+	.poem-list a:visited {
+		color: var(--text);
+	}
+
+	.poem-list a:hover .title {
+		color: var(--accent);
+	}
+
+	.number {
+		color: var(--faint);
+		font-size: 0.9rem;
+	}
+
+	.title {
+		font-size: clamp(1.25rem, 3vw, 2rem);
+		transition: color 160ms ease;
+	}
+
+	@media (max-width: 620px) {
+		.home-shell {
+			width: min(100% - 28px, 900px);
+			padding-top: 22px;
+		}
+
+		.intro {
+			padding: 50px 0 38px;
+		}
+
+		.poem-list a {
+			grid-template-columns: 42px 1fr;
+			gap: 14px;
+		}
+	}
+</style>

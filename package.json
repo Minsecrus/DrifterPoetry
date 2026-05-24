@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "validate": "deno task validate",
+    "writer": "deno task writer",
     "preview": "astro preview",
     "astro": "astro"
   },
