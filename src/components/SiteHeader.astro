@@ -1,4 +1,5 @@
 ---
+import { BookOpen, Info, PenLine, X } from "@lucide/astro";
 import { withBase } from "../lib/poems";
 
 interface Props {
@@ -17,8 +18,12 @@ const githubHref = "https://github.com/Minsecrus/DrifterPoetry";
 	{
 		showWritingNav && (
 			<nav class="segmented-control site-nav" aria-label="Primary">
-				<a class:list={["segment", { active: current === "home" || current === "poem" }]} href={homeHref}>Read</a>
-				<a class:list={["segment", { active: current === "write" }]} href={writeHref}>Write</a>
+				<a class:list={["segment", { active: current === "home" || current === "poem" }]} href={homeHref} aria-label="Read" title="Read">
+					<BookOpen aria-hidden="true" size={15} strokeWidth={1.8} />
+				</a>
+				<a class:list={["segment", { active: current === "write" }]} href={writeHref} aria-label="Write" title="Write">
+					<PenLine aria-hidden="true" size={15} strokeWidth={1.8} />
+				</a>
 			</nav>
 		)
 	}
@@ -27,10 +32,49 @@ const githubHref = "https://github.com/Minsecrus/DrifterPoetry";
 		<button class="segment" type="button" data-theme-choice="dark">Dark</button>
 		<button class="segment" type="button" data-theme-choice="system">System</button>
 	</div>
-	<a class="github-link" href={githubHref} target="_blank" rel="noreferrer">GitHub</a>
+	<button class="info-button" type="button" data-info-open aria-label="About DrifterPoetry" title="About">
+		<Info aria-hidden="true" size={16} strokeWidth={1.8} />
+	</button>
 </header>
 
-<style>
+<dialog class="info-dialog" data-info-dialog aria-labelledby="info-title">
+	<div class="info-panel">
+		<div class="info-topline">
+			<h2 id="info-title">DrifterPoetry</h2>
+			<button class="info-close" type="button" data-info-close aria-label="Close">
+				<X aria-hidden="true" size={16} strokeWidth={1.8} />
+			</button>
+		</div>
+		<p>About content placeholder.</p>
+		<a href={githubHref} target="_blank" rel="noreferrer">GitHub</a>
+	</div>
+</dialog>
+
+<script>
+	const infoDialog = document.querySelector("[data-info-dialog]");
+	const infoOpenButton = document.querySelector("[data-info-open]");
+	const infoCloseButton = document.querySelector("[data-info-close]");
+
+	infoOpenButton?.addEventListener("click", () => {
+		if (infoDialog instanceof HTMLDialogElement) {
+			infoDialog.showModal();
+		}
+	});
+
+	infoCloseButton?.addEventListener("click", () => {
+		if (infoDialog instanceof HTMLDialogElement) {
+			infoDialog.close();
+		}
+	});
+
+	infoDialog?.addEventListener("click", (event) => {
+		if (event.target === infoDialog && infoDialog instanceof HTMLDialogElement) {
+			infoDialog.close();
+		}
+	});
+</script>
+
+<style is:global>
 	.site-header {
 		display: grid;
 		grid-template-columns: 1fr auto auto auto;
@@ -41,9 +85,13 @@ const githubHref = "https://github.com/Minsecrus/DrifterPoetry";
 	}
 
 	.brand {
+		min-width: 0;
+		overflow: hidden;
 		font-size: 0.88rem;
 		color: var(--muted);
 		text-decoration: none;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.brand:visited,
@@ -52,6 +100,7 @@ const githubHref = "https://github.com/Minsecrus/DrifterPoetry";
 	}
 
 	.segmented-control {
+		flex: 0 0 auto;
 		display: inline-flex;
 		gap: 4px;
 		align-items: center;
@@ -80,6 +129,18 @@ const githubHref = "https://github.com/Minsecrus/DrifterPoetry";
 		line-height: 1;
 	}
 
+	.site-nav .segment {
+		width: 28px;
+		min-width: 28px;
+		padding: 0;
+	}
+
+	.segment svg,
+	.info-button svg,
+	.info-close svg {
+		flex: 0 0 auto;
+	}
+
 	.segment:hover,
 	.segment.active,
 	.segment.active:visited,
@@ -88,32 +149,140 @@ const githubHref = "https://github.com/Minsecrus/DrifterPoetry";
 		color: var(--text);
 	}
 
-	.github-link,
-	.github-link:visited {
+	.info-button {
+		appearance: none;
+		flex: 0 0 auto;
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
+		width: 32px;
 		height: 32px;
-		border: 1px solid var(--line);
-		border-radius: 999px;
-		padding: 0 14px;
-		background: var(--surface);
+		border: 0;
+		border-radius: 50%;
+		padding: 0;
+		background: transparent;
 		color: var(--muted);
-		text-decoration: none;
-		font-size: 0.78rem;
-		line-height: 1;
+		cursor: pointer;
 	}
 
-	.github-link:hover {
+	.info-button:hover {
+		background: var(--accent-soft);
+		color: var(--text);
+	}
+
+	.info-dialog {
+		width: min(320px, calc(100% - 40px));
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		padding: 0;
+		background: var(--surface);
+		color: var(--text);
+	}
+
+	.info-dialog::backdrop {
+		background: rgb(0 0 0 / 0.24);
+	}
+
+	.info-panel {
+		display: grid;
+		gap: 18px;
+		padding: 20px;
+	}
+
+	.info-topline {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
+	}
+
+	.info-dialog h2,
+	.info-dialog p {
+		margin: 0;
+	}
+
+	.info-dialog h2 {
+		font-size: 1.1rem;
+		font-weight: 400;
+		line-height: 1.2;
+	}
+
+	.info-dialog p {
+		color: var(--muted);
+		font-size: 0.92rem;
+	}
+
+	.info-dialog a,
+	.info-dialog a:visited {
+		color: var(--accent);
+		text-decoration: none;
+	}
+
+	.info-dialog a:hover {
+		color: var(--text);
+	}
+
+	.info-close {
+		appearance: none;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		border: 0;
+		border-radius: 50%;
+		padding: 0;
+		background: transparent;
+		color: var(--muted);
+		cursor: pointer;
+	}
+
+	.info-close:hover {
 		background: var(--accent-soft);
 		color: var(--text);
 	}
 
 	@media (max-width: 720px) {
 		.site-header {
-			grid-template-columns: 1fr;
-			align-items: start;
+			display: flex;
+			flex-wrap: nowrap;
+			align-items: center;
+			gap: 8px;
+			overflow-x: auto;
 			padding-bottom: 28px;
+			scrollbar-width: none;
+			white-space: nowrap;
+		}
+
+		.site-header::-webkit-scrollbar {
+			display: none;
+		}
+
+		.brand {
+			flex: 1 1 auto;
+			font-size: 0.8rem;
+		}
+
+		.segmented-control {
+			gap: 2px;
+			padding: 2px;
+		}
+
+		.segment {
+			min-width: 0;
+			height: 22px;
+			padding: 0 7px;
+			font-size: 0.72rem;
+		}
+
+		.site-nav .segment {
+			width: 24px;
+			min-width: 24px;
+		}
+
+		.info-button {
+			width: 28px;
+			height: 28px;
 		}
 	}
 </style>

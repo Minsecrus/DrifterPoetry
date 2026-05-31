@@ -1,0 +1,65 @@
+---
+import { ChevronDown } from "@lucide/astro";
+
+interface Props {
+	label: string;
+	class?: string;
+}
+
+const { label, class: className = "" } = Astro.props;
+---
+
+<details class:list={["collapsible-sidebar", className]} data-collapsible-sidebar aria-label={label} open>
+	<summary>
+		<span>{label}</span>
+		<ChevronDown aria-hidden="true" size={18} strokeWidth={1.75} />
+	</summary>
+	<div class="collapsible-sidebar-body">
+		<slot />
+	</div>
+</details>
+
+<style>
+	.collapsible-sidebar summary {
+		display: none;
+	}
+
+	@media (max-width: 860px) {
+		.collapsible-sidebar summary {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 12px;
+			padding: 12px 0;
+			color: var(--muted);
+			cursor: pointer;
+			font-size: 0.92rem;
+			list-style: none;
+		}
+
+		.collapsible-sidebar summary span {
+			min-width: 0;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		.collapsible-sidebar summary::-webkit-details-marker {
+			display: none;
+		}
+
+		.collapsible-sidebar summary :global(svg) {
+			flex: 0 0 auto;
+			color: var(--accent);
+			transition: transform 160ms ease;
+		}
+
+		.collapsible-sidebar[open] summary :global(svg) {
+			transform: rotate(180deg);
+		}
+
+		.collapsible-sidebar-body {
+			padding-bottom: 18px;
+		}
+	}
+</style>

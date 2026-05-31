@@ -1,9 +1,12 @@
 ---
 import SiteHeader from "../../components/SiteHeader.astro";
+import CollapsibleSidebar from "../../components/CollapsibleSidebar.astro";
 import PoemNav from "../../components/PoemNav.astro";
 import Layout from "../../layouts/Layout.astro";
 import { getPoemDisplayTitle, loadPoem, loadPoemIndex, loadPoems } from "../../lib/poems";
 import { parseNotesDsl } from "../../lib/notes";
+
+export const prerender = import.meta.env.PROD;
 
 export async function getStaticPaths() {
 	const index = await loadPoemIndex();
@@ -81,9 +84,9 @@ function escapeHtml(value: string): string {
 				}
 			</article>
 
-			<aside class="sidebar" aria-label="Poem index">
+			<CollapsibleSidebar class="sidebar" label="Poem index">
 				<PoemNav activeUuid={poem.uuid} items={poems} />
-			</aside>
+			</CollapsibleSidebar>
 		</div>
 	</div>
 </Layout>
@@ -97,7 +100,7 @@ function escapeHtml(value: string): string {
 
 	.poem-layout {
 		display: grid;
-		grid-template-columns: minmax(0, 720px) 240px;
+		grid-template-columns: minmax(0, 720px) 300px;
 		gap: 72px;
 		align-items: start;
 		padding-top: 64px;
@@ -201,7 +204,7 @@ function escapeHtml(value: string): string {
 		color: var(--accent);
 	}
 
-	.sidebar {
+	:global(.sidebar) {
 		position: sticky;
 		top: 28px;
 		padding-left: 24px;
@@ -220,10 +223,10 @@ function escapeHtml(value: string): string {
 			padding-top: 48px;
 		}
 
-		.sidebar {
+		:global(.sidebar) {
 			position: static;
 			order: -1;
-			padding: 0 0 24px;
+			padding: 0;
 			border-left: 0;
 			border-bottom: 1px solid var(--line);
 		}

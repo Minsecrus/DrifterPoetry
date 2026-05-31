@@ -31,6 +31,7 @@ const { title = "DrifterPoetry" } = Astro.props;
     <script is:inline>
       const buttons = document.querySelectorAll("[data-theme-choice]");
       const query = window.matchMedia("(prefers-color-scheme: dark)");
+      const sidebarQuery = window.matchMedia("(max-width: 860px)");
 
       function applyTheme(preference) {
         const theme =
@@ -63,6 +64,15 @@ const { title = "DrifterPoetry" } = Astro.props;
         }
       });
       applyTheme(localStorage.getItem("drifterpoetry-theme") || "system");
+
+      function applySidebarState() {
+        document.querySelectorAll("[data-collapsible-sidebar]").forEach((sidebar) => {
+          sidebar.toggleAttribute("open", !sidebarQuery.matches);
+        });
+      }
+
+      sidebarQuery.addEventListener("change", applySidebarState);
+      applySidebarState();
     </script>
   </body>
 </html>

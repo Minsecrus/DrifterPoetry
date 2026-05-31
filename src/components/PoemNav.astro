@@ -1,41 +1,147 @@
 ---
+import { Grid3X3, List } from "@lucide/astro";
 import { getPoemDisplayTitle, getPoemHref, type Poem } from "../lib/poems";
 
 interface Props {
 	activeUuid?: string;
 	items?: Poem[];
 	mode?: "links" | "buttons";
+	showToolbar?: boolean;
 }
 
-const { activeUuid = "", items = [], mode = "links" } = Astro.props;
+const { activeUuid = "", items = [], mode = "links", showToolbar = true } = Astro.props;
 ---
 
-<ol class="poem-nav" data-poem-list={mode === "buttons" ? true : undefined}>
+<nav class="poem-nav-shell" data-poem-nav-shell data-poem-nav-view="list">
 	{
-		items.map((poem) => (
-			<li data-uuid={poem.uuid}>
-				{
-					mode === "links" ? (
-						<a
-							class:list={{ active: poem.uuid === activeUuid }}
-							href={getPoemHref(poem.uuid)}
-						>
-							<span>{String(poem.number).padStart(2, "0")}</span>
-							{getPoemDisplayTitle(poem)}
-						</a>
-					) : (
-						<button class:list={{ active: poem.uuid === activeUuid }} type="button">
-							<span>{String(poem.number).padStart(2, "0")}</span>
-							{getPoemDisplayTitle(poem)}
-						</button>
-					)
-				}
-			</li>
-		))
+		showToolbar && (
+			<div class="poem-nav-toolbar" aria-label="Poem index display mode" data-poem-nav-controls>
+				<button class="poem-nav-mode active" type="button" data-poem-nav-mode="list" aria-pressed="true" aria-label="List mode">
+					<List aria-hidden="true" size={16} strokeWidth={1.8} />
+				</button>
+				<button class="poem-nav-mode" type="button" data-poem-nav-mode="compact" aria-pressed="false" aria-label="Compact mode">
+					<Grid3X3 aria-hidden="true" size={16} strokeWidth={1.8} />
+				</button>
+			</div>
+		)
 	}
-</ol>
+
+	<ol class="poem-nav" data-poem-list={mode === "buttons" ? true : undefined}>
+		{
+			items.map((poem) => (
+				<li data-uuid={poem.uuid}>
+					{
+						mode === "links" ? (
+							<a
+								class:list={{ active: poem.uuid === activeUuid }}
+								href={getPoemHref(poem.uuid)}
+								title={getPoemDisplayTitle(poem)}
+							>
+								<span>{String(poem.number).padStart(2, "0")}</span>
+								<strong>{getPoemDisplayTitle(poem)}</strong>
+							</a>
+						) : (
+							<button class:list={{ active: poem.uuid === activeUuid }} type="button" title={getPoemDisplayTitle(poem)}>
+								<span>{String(poem.number).padStart(2, "0")}</span>
+								<strong>{getPoemDisplayTitle(poem)}</strong>
+							</button>
+						)
+					}
+				</li>
+			))
+		}
+	</ol>
+</nav>
+
+<script>
+	const poemNavViewStorageKey = "drifterpoetry-poem-nav-view";
+	const poemNavViews = new Set(["list", "compact"]);
+
+	function readPoemNavView() {
+		const storedView = localStorage.getItem(poemNavViewStorageKey);
+		return storedView && poemNavViews.has(storedView) ? storedView : "list";
+	}
+
+	function applyPoemNavView(shell, controls, view) {
+		shell.setAttribute("data-poem-nav-view", view);
+		controls?.querySelectorAll("[data-poem-nav-mode]").forEach((modeButton) => {
+			const isActive = modeButton.getAttribute("data-poem-nav-mode") === view;
+			modeButton.classList.toggle("active", isActive);
+			modeButton.setAttribute("aria-pressed", String(isActive));
+		});
+	}
+
+	function bindPoemNavControls(shell, controls) {
+		const buttons = controls.querySelectorAll("[data-poem-nav-mode]");
+		applyPoemNavView(shell, controls, readPoemNavView());
+
+		buttons.forEach((button) => {
+			button.addEventListener("click", () => {
+				const view = button.getAttribute("data-poem-nav-mode") || "list";
+
+				localStorage.setItem(poemNavViewStorageKey, view);
+				applyPoemNavView(shell, controls, view);
+			});
+		});
+	}
+
+	document.querySelectorAll("[data-poem-nav-shell]").forEach((shell) => {
+		const controls = shell.querySelector("[data-poem-nav-controls]");
+		if (controls) {
+			bindPoemNavControls(shell, controls);
+		} else {
+			applyPoemNavView(shell, null, readPoemNavView());
+		}
+	});
+
+	document.querySelectorAll("[data-external-poem-nav-controls]").forEach((controls) => {
+		const sidebar = controls.closest("[data-collapsible-sidebar]");
+		const shell = sidebar?.querySelector("[data-poem-nav-shell]");
+		if (shell) {
+			bindPoemNavControls(shell, controls);
+		}
+	});
+</script>
 
 <style is:global>
+	.poem-nav-shell {
+		display: grid;
+		gap: 14px;
+	}
+
+	.poem-nav-toolbar {
+		display: flex;
+		justify-content: end;
+		gap: 4px;
+		min-width: 0;
+		white-space: nowrap;
+	}
+
+	.poem-nav-mode {
+		appearance: none;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		border: 0;
+		border-radius: 6px;
+		background: transparent;
+		color: var(--muted);
+		cursor: pointer;
+	}
+
+	.poem-nav-mode svg {
+		flex: 0 0 auto;
+	}
+
+	.poem-nav-mode:hover,
+	.poem-nav-mode.active,
+	.poem-nav-mode[aria-pressed="true"] {
+		background: var(--accent-soft);
+		color: var(--text);
+	}
+
 	.poem-nav {
 		display: grid;
 		gap: 8px;
@@ -67,6 +173,14 @@ const { activeUuid = "", items = [], mode = "links" } = Astro.props;
 		line-height: 1.45;
 	}
 
+	.poem-nav strong {
+		min-width: 0;
+		overflow: hidden;
+		font-weight: 400;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
 	.poem-nav a:visited {
 		color: var(--muted);
 	}
@@ -87,5 +201,63 @@ const { activeUuid = "", items = [], mode = "links" } = Astro.props;
 	.poem-nav button:hover span,
 	.poem-nav .active span {
 		color: var(--accent);
+	}
+
+	.poem-nav-shell[data-poem-nav-view="compact"] .poem-nav {
+		grid-template-columns: repeat(10, minmax(0, 1fr));
+		gap: 6px;
+	}
+
+	.poem-nav-shell[data-poem-nav-view="compact"] .poem-nav li {
+		border-bottom: 0;
+	}
+
+	.poem-nav-shell[data-poem-nav-view="compact"] .poem-nav a,
+	.poem-nav-shell[data-poem-nav-view="compact"] .poem-nav button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 0;
+		aspect-ratio: 1;
+		border: 0;
+		border-radius: 6px;
+		padding: 0;
+		background: transparent;
+		text-align: center;
+	}
+
+	.poem-nav-shell[data-poem-nav-view="compact"] .poem-nav a:hover,
+	.poem-nav-shell[data-poem-nav-view="compact"] .poem-nav button:hover {
+		color: var(--text);
+	}
+
+	.poem-nav-shell[data-poem-nav-view="compact"] .poem-nav .active,
+	.poem-nav-shell[data-poem-nav-view="compact"] .poem-nav .active:visited {
+		background: var(--accent-soft);
+		color: var(--text);
+	}
+
+	.poem-nav-shell[data-poem-nav-view="compact"] .poem-nav strong {
+		display: none;
+	}
+
+	.poem-nav-shell[data-poem-nav-view="compact"] .poem-nav span {
+		color: currentColor;
+		font-size: 0.76rem;
+	}
+
+	@media (max-width: 860px) {
+		.poem-nav-shell {
+			gap: 10px;
+		}
+
+		.poem-nav-toolbar {
+			justify-content: start;
+		}
+
+		.poem-nav-mode {
+			width: 26px;
+			height: 26px;
+		}
 	}
 </style>

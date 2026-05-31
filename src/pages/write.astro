@@ -1,12 +1,16 @@
 ---
 import SiteHeader from "../components/SiteHeader.astro";
+import CollapsibleSidebar from "../components/CollapsibleSidebar.astro";
 import PoemNav from "../components/PoemNav.astro";
 import Layout from "../layouts/Layout.astro";
-import { withBase } from "../lib/poems";
+import { Grid3X3, List, Plus } from "@lucide/astro";
+import { loadPoems, withBase } from "../lib/poems";
 
 if (!import.meta.env.DEV) {
 	return Astro.redirect(withBase());
 }
+
+const poems = await loadPoems();
 ---
 
 <Layout title="Write - DrifterPoetry">
@@ -14,13 +18,25 @@ if (!import.meta.env.DEV) {
 		<SiteHeader current="write" />
 
 		<section class="write-workspace" aria-label="Writing workspace">
-			<aside class="write-list">
+			<CollapsibleSidebar class="write-list" label="Poem list">
 				<div class="toolbar">
 					<h1>Write</h1>
-					<button class="icon-button" type="button" data-action="new" aria-label="New poem">+</button>
+					<div class="write-toolbar-actions">
+						<div class="poem-nav-toolbar" aria-label="Poem index display mode" data-external-poem-nav-controls>
+							<button class="poem-nav-mode active" type="button" data-poem-nav-mode="list" aria-pressed="true" aria-label="List mode">
+								<List aria-hidden="true" size={16} strokeWidth={1.8} />
+							</button>
+							<button class="poem-nav-mode" type="button" data-poem-nav-mode="compact" aria-pressed="false" aria-label="Compact mode">
+								<Grid3X3 aria-hidden="true" size={16} strokeWidth={1.8} />
+							</button>
+						</div>
+						<button class="icon-button" type="button" data-action="new" aria-label="New poem">
+							<Plus aria-hidden="true" size={22} strokeWidth={1.8} />
+						</button>
+					</div>
 				</div>
-				<PoemNav mode="buttons" />
-			</aside>
+				<PoemNav mode="buttons" items={poems} showToolbar={false} />
+			</CollapsibleSidebar>
 
 			<form class="editor" data-editor>
 				<div class="editor-topline">
@@ -95,7 +111,12 @@ if (!import.meta.env.DEV) {
 		}
 
 		async function loadPoems(preferredUuid = state.selectedUuid) {
-			state.poems = await request("/api/poems");
+			try {
+				state.poems = await request("/api/poems");
+			} catch (error) {
+				setStatus("Writer API unavailable");
+				return;
+			}
 			state.selectedUuid = preferredUuid || state.poems[0]?.uuid || "";
 			if (!state.poems.some((poem) => poem.uuid === state.selectedUuid)) {
 				state.selectedUuid = state.poems[0]?.uuid || "";
@@ -181,9 +202,10 @@ if (!import.meta.env.DEV) {
 				const button = document.createElement("button");
 				button.type = "button";
 				button.className = poem.uuid === state.selectedUuid ? "active" : "";
-				button.innerHTML = `<span>${String(poem.number).padStart(2, "0")}</span>${escapeHtml(
-					poem.title.trim() || String(poem.number),
-				)}`;
+				button.title = poem.title.trim() || String(poem.number);
+				button.innerHTML = `<span>${String(poem.number).padStart(2, "0")}</span><strong>${escapeHtml(
+					button.title,
+				)}</strong>`;
 				button.addEventListener("click", () => {
 					state.selectedUuid = poem.uuid;
 					state.expandedNotes.clear();
@@ -359,7 +381,7 @@ if (!import.meta.env.DEV) {
 		padding-top: 40px;
 	}
 
-	.write-list {
+	:global(.write-list) {
 		position: sticky;
 		top: 24px;
 		align-self: start;
@@ -373,6 +395,7 @@ if (!import.meta.env.DEV) {
 		align-items: center;
 		justify-content: space-between;
 		gap: 16px;
+		min-width: 0;
 	}
 
 	h1,
@@ -385,6 +408,20 @@ if (!import.meta.env.DEV) {
 		font-size: 2rem;
 		font-weight: 400;
 		line-height: 1.1;
+	}
+
+	.toolbar h1 {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.write-toolbar-actions {
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		gap: 6px;
 	}
 
 	h2 {
@@ -479,6 +516,7 @@ if (!import.meta.env.DEV) {
 	}
 
 	.icon-button {
+		flex: 0 0 auto;
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
@@ -543,8 +581,31 @@ if (!import.meta.env.DEV) {
 			grid-template-columns: 1fr;
 		}
 
-		.write-list {
+		:global(.write-list) {
 			position: static;
+			border-bottom: 1px solid var(--line);
+		}
+
+		:global(.write-shell .write-list .toolbar),
+		:global(.write-shell .write-list .poem-nav) {
+			margin-bottom: 18px;
+		}
+
+		.toolbar {
+			gap: 10px;
+		}
+
+		.toolbar h1 {
+			font-size: 1.35rem;
+		}
+
+		.icon-button {
+			width: 30px;
+			height: 30px;
+		}
+
+		.write-toolbar-actions {
+			gap: 4px;
 		}
 	}
 </style>
