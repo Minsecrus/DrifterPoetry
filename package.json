@@ -6,15 +6,17 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "astro dev",
+    "dev": "concurrently -k -n writer,astro \"deno run --allow-env --allow-net=127.0.0.1:8787 --allow-read=content --allow-write=content server/writer.ts\" \"astro dev\"",
     "build": "astro build",
     "validate": "deno task validate",
-    "writer": "deno task writer",
     "preview": "astro preview",
     "astro": "astro"
   },
   "dependencies": {
     "@lucide/astro": "^1.17.0",
     "astro": "^6.3.7"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.0"
   }
 }

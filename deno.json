@@ -1,10 +1,9 @@
 {
   "tasks": {
-    "dev": "deno task writer & deno task astro:dev",
+    "dev": "deno run -A npm:concurrently -k -n writer,astro \"deno run --allow-env --allow-net=127.0.0.1:8787 --allow-read=content --allow-write=content server/writer.ts\" \"deno task astro:dev\"",
     "astro:dev": "deno run -A npm:astro dev",
     "build": "deno task validate && deno run -A npm:astro build",
     "preview": "deno run -A npm:astro preview",
-    "writer": "deno run --allow-net=127.0.0.1:8787 --allow-read=content --allow-write=content server/writer.ts",
     "validate": "deno run --allow-read=content scripts/validate.ts"
   }
 }

@@ -1,0 +1,355 @@
+---
+import { Check, RotateCcw } from "@lucide/astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import Layout from "../layouts/Layout.astro";
+import { defaultPageStyle, loadPageStyle } from "../lib/pageStyle";
+
+const pageStyle = await loadPageStyle();
+const canWrite = import.meta.env.DEV;
+const colorFields = [
+	["background", "Background"],
+	["surface", "Surface"],
+	["title", "Title"],
+	["text", "Text"],
+	["muted", "Muted"],
+	["faint", "Faint"],
+	["line", "Line"],
+	["accent", "Accent"],
+	["accentSoft", "Accent soft"],
+] as const;
+---
+
+<Layout title="Style - DrifterPoetry">
+	<main class="style-shell" data-style-mode={canWrite ? "write" : "read"}>
+		<SiteHeader current="style" />
+
+		<form class="style-panel" data-style-form data-default-style={JSON.stringify(defaultPageStyle)} data-initial-style={JSON.stringify(pageStyle)}>
+			<div class="style-topline">
+				<div>
+					<h1>Style</h1>
+					<p>{canWrite ? "Write mode saves defaults to JSON." : "Read mode previews colors for this tab."}</p>
+				</div>
+				<p class="status" data-status></p>
+			</div>
+
+			<section class="control-group" aria-labelledby="color-controls">
+				<h2 id="color-controls">Colors</h2>
+				<div class="swatch-grid">
+					{
+						colorFields.map(([name, label]) => (
+							<label class="swatch-field">
+								<span>{label}</span>
+								<input type="color" name={name} value={pageStyle.colors[name]} data-style-color={name} />
+							</label>
+						))
+					}
+				</div>
+			</section>
+
+			{
+				canWrite && (
+					<section class="control-group" aria-labelledby="font-controls">
+						<h2 id="font-controls">Font</h2>
+						<label class="font-field">
+							<span>Font family</span>
+							<input type="text" name="fontFamily" value={pageStyle.fontFamily} data-style-font autocomplete="off" />
+						</label>
+					</section>
+				)
+			}
+
+			<div class="style-actions">
+				<button class="icon-text-button" type="button" data-reset-style>
+					<RotateCcw aria-hidden="true" size={16} strokeWidth={1.8} />
+					<span>Reset</span>
+				</button>
+				{
+					canWrite && (
+						<button class="primary-button" type="submit">
+							<Check aria-hidden="true" size={16} strokeWidth={1.8} />
+							<span>Save</span>
+						</button>
+					)
+				}
+			</div>
+		</form>
+	</main>
+
+	<script>
+		const apiBase = "http://127.0.0.1:8787";
+		const form = document.querySelector("[data-style-form]");
+		const status = document.querySelector("[data-status]");
+		const resetButton = document.querySelector("[data-reset-style]");
+		const canWrite = document.querySelector("[data-style-mode='write']") !== null;
+		const colorMap = {
+			background: "--bg",
+			surface: "--surface",
+			title: "--title",
+			text: "--text",
+			muted: "--muted",
+			faint: "--faint",
+			line: "--line",
+			accent: "--accent",
+			accentSoft: "--accent-soft",
+		};
+
+		const initialStyle = JSON.parse(form.dataset.initialStyle);
+		const defaultStyle = JSON.parse(form.dataset.defaultStyle);
+
+		form.querySelectorAll("[data-style-color]").forEach((input) => {
+			input.addEventListener("input", () => {
+				applyStyle(readFormStyle());
+				persistPreview(readFormStyle());
+				setStatus(canWrite ? "Unsaved" : "Previewing");
+			});
+		});
+
+		form.querySelector("[data-style-font]")?.addEventListener("input", () => {
+			applyStyle(readFormStyle());
+			setStatus("Unsaved");
+		});
+
+		resetButton.addEventListener("click", () => {
+			setFormStyle(defaultStyle);
+			applyStyle(defaultStyle);
+			persistPreview(defaultStyle);
+			setStatus(canWrite ? "Unsaved" : "Reset preview");
+		});
+
+		form.addEventListener("submit", async (event) => {
+			event.preventDefault();
+			if (!canWrite) {
+				return;
+			}
+
+			try {
+				const saved = await request("/api/style", {
+					method: "PUT",
+					body: JSON.stringify(readFormStyle()),
+				});
+				setFormStyle(saved);
+				applyStyle(saved);
+				sessionStorage.removeItem("drifterpoetry-style-preview");
+				setStatus("Saved");
+			} catch {
+				setStatus("Writer API unavailable");
+			}
+		});
+
+		applyStyle(initialStyle);
+
+		function readFormStyle() {
+			const colors = {};
+			form.querySelectorAll("[data-style-color]").forEach((input) => {
+				colors[input.dataset.styleColor] = input.value;
+			});
+
+			return {
+				colors,
+				fontFamily: form.querySelector("[data-style-font]")?.value || initialStyle.fontFamily,
+			};
+		}
+
+		function setFormStyle(style) {
+			form.querySelectorAll("[data-style-color]").forEach((input) => {
+				const color = style.colors[input.dataset.styleColor];
+				if (color) {
+					input.value = color;
+				}
+			});
+
+			const fontInput = form.querySelector("[data-style-font]");
+			if (fontInput) {
+				fontInput.value = style.fontFamily || defaultStyle.fontFamily;
+			}
+		}
+
+		function applyStyle(style) {
+			Object.entries(colorMap).forEach(([key, property]) => {
+				const color = style.colors?.[key];
+				if (/^#[0-9a-f]{6}$/i.test(color)) {
+					document.documentElement.style.setProperty(property, color);
+				}
+			});
+
+			if (canWrite && style.fontFamily) {
+				document.documentElement.style.setProperty("--font-family", style.fontFamily);
+			}
+		}
+
+		function persistPreview(style) {
+			sessionStorage.setItem("drifterpoetry-style-preview", JSON.stringify(style.colors));
+		}
+
+		function setStatus(message) {
+			status.textContent = message;
+			if (message && message !== "Unsaved" && message !== "Previewing") {
+				window.setTimeout(() => {
+					if (status.textContent === message) {
+						status.textContent = "";
+					}
+				}, 1600);
+			}
+		}
+
+		async function request(path, options = {}) {
+			const response = await fetch(`${apiBase}${path}`, {
+				headers: { "Content-Type": "application/json" },
+				...options,
+			});
+			const data = await response.json();
+			if (!response.ok) {
+				throw new Error(data.error || "Writer API request failed.");
+			}
+			return data;
+		}
+	</script>
+</Layout>
+
+<style>
+	.style-shell {
+		width: min(980px, calc(100% - 40px));
+		margin: 0 auto;
+		padding: 36px 0 72px;
+	}
+
+	.style-panel {
+		display: grid;
+		gap: 30px;
+		padding-top: 48px;
+	}
+
+	.style-topline,
+	.style-actions {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 18px;
+		min-width: 0;
+	}
+
+	h1,
+	h2,
+	p {
+		margin: 0;
+	}
+
+	h1 {
+		color: var(--title);
+		font-size: 2.4rem;
+		font-weight: 400;
+		line-height: 1.1;
+	}
+
+	h2,
+	.style-topline p,
+	.status {
+		color: var(--muted);
+		font-size: 0.92rem;
+		font-weight: 400;
+	}
+
+	.status {
+		color: var(--accent);
+		white-space: nowrap;
+	}
+
+	.control-group {
+		display: grid;
+		gap: 16px;
+		padding-top: 24px;
+		border-top: 1px solid var(--line);
+	}
+
+	.swatch-grid {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 12px;
+	}
+
+	.swatch-field,
+	.font-field {
+		display: grid;
+		gap: 8px;
+		min-width: 0;
+	}
+
+	.swatch-field span,
+	.font-field span {
+		color: var(--muted);
+		font-size: 0.82rem;
+	}
+
+	.swatch-field input {
+		width: 100%;
+		height: 44px;
+		border: 1px solid var(--line);
+		border-radius: 6px;
+		padding: 3px;
+		background: var(--surface);
+		cursor: pointer;
+	}
+
+	.font-field input {
+		width: 100%;
+		border: 1px solid var(--line);
+		border-radius: 6px;
+		padding: 10px 12px;
+		background: var(--surface);
+		color: var(--text);
+	}
+
+	.icon-text-button,
+	.primary-button {
+		appearance: none;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 7px;
+		min-height: 34px;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		padding: 6px 14px;
+		background: var(--surface);
+		color: var(--text);
+		cursor: pointer;
+		font: inherit;
+		font-size: 0.86rem;
+	}
+
+	.primary-button {
+		border-color: var(--accent);
+		background: var(--accent);
+		color: var(--surface);
+	}
+
+	.icon-text-button:hover {
+		background: var(--accent-soft);
+	}
+
+	.icon-text-button svg,
+	.primary-button svg {
+		flex: 0 0 auto;
+	}
+
+	@media (max-width: 720px) {
+		.style-shell {
+			width: min(100% - 28px, 980px);
+			padding-top: 22px;
+		}
+
+		.style-panel {
+			padding-top: 36px;
+		}
+
+		.style-topline,
+		.style-actions {
+			align-items: start;
+			flex-direction: column;
+		}
+
+		.swatch-grid {
+			grid-template-columns: 1fr 1fr;
+		}
+	}
+</style>

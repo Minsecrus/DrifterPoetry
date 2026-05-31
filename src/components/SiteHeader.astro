@@ -1,32 +1,36 @@
 ---
-import { BookOpen, Info, PenLine, X } from "@lucide/astro";
+import { BookOpen, Info, Palette, PenLine, X } from "@lucide/astro";
 import { withBase } from "../lib/poems";
 
 interface Props {
-	current?: "home" | "write" | "poem";
+	current?: "home" | "write" | "poem" | "style";
 }
 
 const { current } = Astro.props;
 const homeHref = withBase();
 const writeHref = withBase("write/");
+const styleHref = withBase("style/");
 const showWritingNav = import.meta.env.DEV;
 const githubHref = "https://github.com/Minsecrus/DrifterPoetry";
 ---
 
 <header class="site-header">
 	<a class="brand" href={homeHref}>DrifterPoetry</a>
-	{
-		showWritingNav && (
-			<nav class="segmented-control site-nav" aria-label="Primary">
-				<a class:list={["segment", { active: current === "home" || current === "poem" }]} href={homeHref} aria-label="Read" title="Read">
-					<BookOpen aria-hidden="true" size={15} strokeWidth={1.8} />
-				</a>
+	<nav class="segmented-control site-nav" aria-label="Primary">
+		<a class:list={["segment", { active: current === "home" || current === "poem" }]} href={homeHref} aria-label="Read" title="Read">
+			<BookOpen aria-hidden="true" size={15} strokeWidth={1.8} />
+		</a>
+		{
+			showWritingNav && (
 				<a class:list={["segment", { active: current === "write" }]} href={writeHref} aria-label="Write" title="Write">
 					<PenLine aria-hidden="true" size={15} strokeWidth={1.8} />
 				</a>
-			</nav>
-		)
-	}
+			)
+		}
+		<a class:list={["segment", { active: current === "style" }]} href={styleHref} aria-label="Style" title="Style">
+			<Palette aria-hidden="true" size={15} strokeWidth={1.8} />
+		</a>
+	</nav>
 	<div class="segmented-control theme-switcher" aria-label="Theme">
 		<button class="segment" type="button" data-theme-choice="light">Light</button>
 		<button class="segment" type="button" data-theme-choice="dark">Dark</button>

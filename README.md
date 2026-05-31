@@ -52,5 +52,6 @@ deno task dev
 ```
 
 `deno task dev` starts the local writer API and the Astro dev server together.
+`pnpm dev` does the same for Node-based local development.
 The writer API listens only on `127.0.0.1:8787` and is not included in the
 static build output.

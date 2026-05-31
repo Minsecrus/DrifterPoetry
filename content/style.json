@@ -1,0 +1,14 @@
+{
+  "colors": {
+    "background": "#fcfbfa",
+    "surface": "#fcfbfa",
+    "title": "#211e1a",
+    "text": "#211e1a",
+    "muted": "#7d756b",
+    "faint": "#b8aea1",
+    "line": "#ded5ca",
+    "accent": "#6f4e37",
+    "accentSoft": "#eee5dc"
+  },
+  "fontFamily": "\"Libre Baskerville\", \"Noto Serif SC\", \"Songti SC\", Georgia, serif"
+}

@@ -1,13 +1,17 @@
 ---
+import { loadPageStyle, pageStyleToCustomProperties } from "../lib/pageStyle";
+
 interface Props {
   title?: string;
 }
 
 const { title = "DrifterPoetry" } = Astro.props;
+const pageStyle = await loadPageStyle();
+const pageStyleVars = pageStyleToCustomProperties(pageStyle);
 ---
 
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" style={pageStyleVars}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
@@ -24,6 +28,30 @@ const { title = "DrifterPoetry" } = Astro.props;
       document.documentElement.dataset.theme =
         preference === "system" ? (systemDark ? "dark" : "light") : preference;
       document.documentElement.dataset.themePreference = preference;
+      const stylePreview = sessionStorage.getItem("drifterpoetry-style-preview");
+      if (stylePreview) {
+        try {
+          const colors = JSON.parse(stylePreview);
+          const map = {
+            background: "--bg",
+            surface: "--surface",
+            title: "--title",
+            text: "--text",
+            muted: "--muted",
+            faint: "--faint",
+            line: "--line",
+            accent: "--accent",
+            accentSoft: "--accent-soft",
+          };
+          Object.entries(map).forEach(([key, property]) => {
+            if (/^#[0-9a-f]{6}$/i.test(colors[key])) {
+              document.documentElement.style.setProperty(property, colors[key]);
+            }
+          });
+        } catch {
+          sessionStorage.removeItem("drifterpoetry-style-preview");
+        }
+      }
     </script>
   </head>
   <body>
@@ -88,8 +116,9 @@ const { title = "DrifterPoetry" } = Astro.props;
     --line: #ded5ca;
     --accent: #6f4e37;
     --accent-soft: #eee5dc;
-    font-family:
-      "Libre Baskerville", "Noto Serif SC", "Songti SC", Georgia, serif;
+    --title: var(--text);
+    --font-family: "Libre Baskerville", "Noto Serif SC", "Songti SC", Georgia, serif;
+    font-family: var(--font-family);
   }
 
   :root[data-theme="dark"] {

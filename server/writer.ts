@@ -10,9 +10,43 @@ interface Poem {
   notes: unknown[];
 }
 
+interface PageStyleColors {
+  background: string;
+  surface: string;
+  title: string;
+  text: string;
+  muted: string;
+  faint: string;
+  line: string;
+  accent: string;
+  accentSoft: string;
+}
+
+interface PageStyle {
+  colors: PageStyleColors;
+  fontFamily: string;
+}
+
 const host = "127.0.0.1";
 const port = 8787;
 const poemsDir = new URL("../content/poems/", import.meta.url);
+const styleUrl = new URL("../content/style.json", import.meta.url);
+const defaultPageStyle: PageStyle = {
+  colors: {
+    background: "#fcfbfa",
+    surface: "#fcfbfa",
+    title: "#211e1a",
+    text: "#211e1a",
+    muted: "#7d756b",
+    faint: "#b8aea1",
+    line: "#ded5ca",
+    accent: "#6f4e37",
+    accentSoft: "#eee5dc",
+  },
+  fontFamily: "\"Libre Baskerville\", \"Noto Serif SC\", \"Songti SC\", Georgia, serif",
+};
+const styleColorKeys = Object.keys(defaultPageStyle.colors) as Array<keyof PageStyleColors>;
+const colorPattern = /^#[0-9a-f]{6}$/i;
 
 Deno.serve({ hostname: host, port }, async (request) => {
   const url = new URL(request.url);
@@ -46,6 +80,17 @@ Deno.serve({ hostname: host, port }, async (request) => {
     if (url.pathname === "/api/reorder" && request.method === "POST") {
       const input = await request.json() as { uuids?: unknown };
       return json(await reorderPoems(input.uuids));
+    }
+
+    if (url.pathname === "/api/style" && request.method === "GET") {
+      return json(await readPageStyle());
+    }
+
+    if (url.pathname === "/api/style" && request.method === "PUT") {
+      const input = await request.json();
+      const style = normalizePageStyle(input);
+      await writePageStyle(style);
+      return json(style);
     }
 
     return json({ error: "Not found" }, 404);
@@ -153,6 +198,52 @@ async function readJson<T>(url: URL): Promise<T> {
 
 async function writeJson(url: URL, value: unknown): Promise<void> {
   await Deno.writeTextFile(url, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+async function readPageStyle(): Promise<PageStyle> {
+  try {
+    return normalizePageStyle(await readJson<unknown>(styleUrl));
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      return defaultPageStyle;
+    }
+    throw error;
+  }
+}
+
+async function writePageStyle(style: PageStyle): Promise<void> {
+  await writeJson(styleUrl, normalizePageStyle(style));
+}
+
+function normalizePageStyle(value: unknown): PageStyle {
+  const input = isRecord(value) ? value : {};
+  const inputColors = isRecord(input.colors) ? input.colors : {};
+  const colors = { ...defaultPageStyle.colors };
+
+  for (const key of styleColorKeys) {
+    const color = inputColors[key];
+    if (typeof color === "string" && colorPattern.test(color)) {
+      colors[key] = color;
+    }
+  }
+
+  return {
+    colors,
+    fontFamily: sanitizeFontFamily(input.fontFamily),
+  };
+}
+
+function sanitizeFontFamily(value: unknown): string {
+  if (typeof value !== "string" || value.trim() === "") {
+    return defaultPageStyle.fontFamily;
+  }
+
+  const sanitized = value.replace(/[;{}<>]/g, "").trim();
+  return sanitized || defaultPageStyle.fontFamily;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function json(body: unknown, status = 200): Response {

@@ -377,6 +377,7 @@ const poems = await loadPoems();
 	.write-workspace {
 		display: grid;
 		grid-template-columns: 300px minmax(0, 1fr);
+		align-items: start;
 		gap: 42px;
 		padding-top: 40px;
 	}
@@ -436,6 +437,7 @@ const poems = await loadPoems();
 
 	.editor {
 		display: grid;
+		align-self: start;
 		gap: 22px;
 		min-width: 0;
 	}
